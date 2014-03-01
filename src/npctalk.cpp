@@ -2403,7 +2403,7 @@ TAB key to switch lists, letters to pick items, Enter to finalize, Esc to quit,\
             }
             mvwprintz(w_head, 3, 30,
                       (cash <  0 && g->u.cash >= cash * -1) || (cash >= 0 && p->cash  >= cash) ?
-                      c_green : c_red, (cash >= 0 ? _("Profit $%d") : _("Cost $%d")), abs(cash));
+                      c_green : c_red, (cash >= 0 ? _("Owed $%d") : _("Cost $%d")), abs(cash)); //Changed to owed to better reflect debt system
 
             if (deal != "") {
                 mvwprintz(w_head, 3, 45, (cost < 0 ? c_ltred : c_ltgreen), deal.c_str());
@@ -2508,6 +2508,7 @@ TAB key to switch lists, letters to pick items, Enter to finalize, Esc to quit,\
                 update = true;
                 ch = ' ';
             } else if (cash > 0 && p->cash < cash) {
+                //Looks like the check to put NPC in debt is here....
                 p->op_of_u.owed += cash;
             }
             break;
@@ -2543,6 +2544,24 @@ TAB key to switch lists, letters to pick items, Enter to finalize, Esc to quit,\
     } while (ch != KEY_ESCAPE && ch != '\n');
 
     if (ch == '\n') {
+if( cash > 0 && p->cash < cash )       //make sure NPC has the cash to pay us
+{
+
+
+    if(!query_yn(_("%s can only afford to pay $%d; will owe you $%d. Continue with trade?"),
+                 p->name.c_str(), p->cash, (cash - p->cash)) ) {
+        p->op_of_u.owed -= cash;        //undo debt if we cancel
+        return false;
+    } else {
+
+        cash = p->cash;  //If we are okay getting shorted, set cash to what npc has on hand; debt handled above?
+        //May need to find way to handle/display debt
+        //Is shown as profit...
+    }
+
+
+}
+
         inventory newinv;
         int practice = 0;
         std::vector<char> removing;
@@ -2577,6 +2596,7 @@ TAB key to switch lists, letters to pick items, Enter to finalize, Esc to quit,\
                 newinv.push_back(tmp);
             }
         }
+        
         g->u.practice(g->turn, "barter", practice / 2);
         p->inv = newinv;
         g->u.cash += cash;
